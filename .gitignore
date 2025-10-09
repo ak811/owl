@@ -1,0 +1,102 @@
+# -------------------------
+# Python build artifacts
+# -------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Byte-compiled / optimized / DLL files
+*.so
+*.pyd
+*.dll
+
+# Distribution / packaging
+.Python
+env/
+venv/
+ENV/
+.venv/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# -------------------------
+# Environment & credentials
+# -------------------------
+.env
+.env.*
+!.env.example
+
+# -------------------------
+# Models & data
+# -------------------------
+models/
+*.bin
+*.mp3
+*.wav
+*.m4a
+*.ogg
+*.flac
+*.opus
+*.webm
+*.zip
+*.tar
+*.tar.gz
+*.csv
+*.sqlite3
+*.db
+
+# -------------------------
+# IDE / editor cruft
+# -------------------------
+.vscode/
+.idea/
+*.iml
+*.sublime-project
+*.sublime-workspace
+
+# -------------------------
+# System / OS files
+# -------------------------
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# -------------------------
+# Logs / temp
+# -------------------------
+logs/
+*.log
+*.tmp
+tmp/
+temp/
+__temp__/

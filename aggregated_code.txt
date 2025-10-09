@@ -1,0 +1,644 @@
+PROJECT FILE TREE
+================================================================================
+owl/
+    handle_owl_rating.py
+    commands_owl.py
+    handle_voice_messages.py
+    handle_gpt_mentions.py
+    main.py
+    handle_owl_translation.py
+
+
+/home/data/akhalegh/utils/owl/handle_owl_rating.py
+================================================================================
+import discord
+import logging
+import re
+from openai import AsyncOpenAI
+from bot_configs.config_channels import JUDGE_ZONE_CHANNEL_ID
+from bot_configs.config_general import OPENAI_API_KEY
+
+client = AsyncOpenAI(api_key=OPENAI_API_KEY)
+
+NUM_EMOJIS = {
+    "0": "0️⃣", "1": "1️⃣", "2": "2️⃣", "3": "3️⃣",
+    "4": "4️⃣", "5": "5️⃣", "6": "6️⃣", "7": "7️⃣",
+    "8": "8️⃣", "9": "9️⃣"
+}
+
+def extract_emojis(text: str, max_emojis: int = 5) -> list[str]:
+    emoji_pattern = re.compile(
+        "[\U0001F600-\U0001F64F"  # emoticons
+        "\U0001F300-\U0001F5FF"  # symbols & pictographs
+        "\U0001F680-\U0001F6FF"  # transport & map symbols
+        "\U0001F1E0-\U0001F1FF"  # flags
+        "\U00002700-\U000027BF"  # dingbats
+        "\U0001F900-\U0001F9FF"  # supplemental symbols
+        "\U00002600-\U000026FF"  # misc symbols
+        "]+", flags=re.UNICODE
+    )
+    return emoji_pattern.findall(text)[:max_emojis]
+
+async def handle_owl_rating(message: discord.Message):
+    if message.channel.id != JUDGE_ZONE_CHANNEL_ID:
+        return
+    if message.author.bot or message.webhook_id:
+        return
+    if not message.content.strip():
+        return
+
+    try:
+        prompt = (
+            "You are Owl 🦉, a sharp and witty judge. "
+            "First, rate the following message with a single digit based on how cool  (0–9). "
+            "Then, suggest 5 emoji reactions (funny, emotional, expressive, etc.) that match the vibe of the message.\n\n"
+            "Format your response like this:\n"
+            "Rating: <digit>\n"
+            "Emojis: 😬 🔥 💯 🤡 🧠\n\n"
+            f"Message:\n\"{message.content.strip()}\""
+        )
+
+        response = await client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=25,
+        )
+
+        content = response.choices[0].message.content.strip()
+
+        # Extract rating
+        rating_match = re.search(r"Rating:\s*([0-9])", content)
+        if not rating_match:
+            logging.warning(f"[Owl Rating] Could not extract rating from: {content}")
+            return
+
+        score = rating_match.group(1)
+        emoji = NUM_EMOJIS.get(score)
+        if emoji:
+            await message.add_reaction(emoji)
+
+        # Extract and react with emojis
+        emoji_line = re.search(r"Emojis:\s*(.+)", content)
+        if emoji_line:
+            emojis = extract_emojis(emoji_line.group(1))
+            for e in emojis:
+                await message.add_reaction(e)
+
+    except Exception as e:
+        logging.error(f"[Owl Rating] Error during rating: {e}")
+
+
+/home/data/akhalegh/utils/owl/commands_owl.py
+================================================================================
+import os
+import discord
+from discord.ext import commands
+from gtts import gTTS
+
+from bot import get_bot
+from pets.helper import send_as_pet
+from pets.owl import owl_lookup_definition
+
+bot = get_bot()
+
+# --------------------------------------------------------------------------- #
+# Helper to generate & send pronunciation audio
+# --------------------------------------------------------------------------- #
+async def _send_pronunciation(ctx, word: str, accent: str = "us"):
+    """Generate a TTS MP3 in the requested accent and send it as Owl."""
+    accent_map = {
+        "us": "com", "uk": "co.uk", "au": "com.au",
+        "in": "co.in", "ca": "ca", "ie": "ie", "za": "co.za",
+    }
+    tld = accent_map.get(accent.lower(), "com")
+    safe_word = word.lower().replace(" ", "_")
+    filename = f"{safe_word}.mp3" if accent == "us" else f"{safe_word}_{accent}.mp3"
+
+    try:
+        tts = gTTS(text=word, lang="en", tld=tld)
+        tts.save(filename)
+        await send_as_pet(ctx, "owl", file=discord.File(filename))
+    except Exception:
+        await send_as_pet(ctx, "owl", content="🙅 Couldn't pronounce that word.")
+    finally:
+        if os.path.exists(filename):
+            os.remove(filename)
+
+# --------------------------------------------------------------------------- #
+# Command registration
+# --------------------------------------------------------------------------- #
+def register_owl_commands():
+    @bot.group(invoke_without_command=True)
+    async def owl(ctx):
+        await owl_command_list(ctx)
+
+    @owl.command(name="def")
+    async def owl_def(ctx, *, word: str):
+        success, result = await owl_lookup_definition(word, full=False)
+        if not success:
+            await send_as_pet(ctx, "owl", content=result)
+            return
+        await send_as_pet(ctx, "owl", embed=result)
+        await _send_pronunciation(ctx, word, "us")
+
+    @owl.command(name="deff")
+    async def owl_deff(ctx, *, word: str):
+        success, result = await owl_lookup_definition(word, full=True)
+        if not success:
+            await send_as_pet(ctx, "owl", content=result)
+            return
+        await send_as_pet(ctx, "owl", embed=result)
+        await _send_pronunciation(ctx, word, "us")
+
+    @owl.command(name="pronounce", aliases=["p"])
+    async def owl_pronounce(ctx, accent: str = "us", *, word: str = None):
+        """Pronounce a word in different accents: !owl p [accent] [word] (e.g. !owl p uk hello)"""
+        if word is None:
+            word, accent = accent, "us"
+
+        accent_codes = {"us", "uk", "au", "in", "ca", "ie", "za"}
+        if accent.lower() not in accent_codes:
+            word = f"{accent} {word}".strip()
+            accent = "us"
+
+        await _send_pronunciation(ctx, word, accent.lower())
+
+    @owl.command(name="commands")
+    async def owl_command_list(ctx):
+        embed = discord.Embed(
+            title="🦉 Owl Commands",
+            description=(
+                "`!owl` — Show owl commands\n"
+                "`!owl def [word]` — Quick definition + pronunciation\n"
+                "`!owl deff [word]` — Full definition + pronunciation\n"
+                "`!owl p [accent] [word]` — Pronounce a word\n"
+                "  ↳ Accents: `us`, `uk`, `au`, `in`, `ca`, `ie`, `za`\n"
+            ),
+            color=discord.Color.teal()
+        )
+        await send_as_pet(ctx, "owl", embed=embed)
+
+
+/home/data/akhalegh/utils/owl/handle_voice_messages.py
+================================================================================
+# handle_voice_messages.py
+
+import os
+import whisper
+import aiohttp
+import asyncio
+import discord
+import warnings
+warnings.filterwarnings("ignore", category=FutureWarning)
+
+from bot_configs.config_pets import PERSONAS
+from bot_configs.config_channels import VOICE_CHAT_CHANNEL_ID
+
+# —————————————————————————————————————————————————————————————————————————————
+# Lazy‐loader for Whisper so we never block import or on_ready
+_transcriber = None
+
+async def get_transcriber():
+    global _transcriber
+    if _transcriber is None:
+        # Load model in a thread so we don't block the event loop
+        _transcriber = await asyncio.to_thread(
+            whisper.load_model,
+            "large",
+            device="cpu"
+        )
+    return _transcriber
+
+# —————————————————————————————————————————————————————————————————————————————
+async def send_as_pet(
+    ctx: discord.abc.Messageable,
+    pet_type: str,
+    content: str = None,
+    embed: discord.Embed = None,
+    file: discord.File = None
+):
+    """
+    Sends via webhook as a pet persona, falling back to normal send.
+    """
+    persona = PERSONAS.get(pet_type)
+    if not persona:
+        await ctx.send("❓ Unknown pet type.")
+        return
+
+    try:
+        existing = await ctx.webhooks()
+        webhook = discord.utils.get(existing, name=persona["name"])
+        if webhook is None:
+            webhook = await ctx.create_webhook(name=persona["name"])
+
+        files = [file] if file else []
+        await webhook.send(
+            content=content,
+            embed=embed,
+            username=persona["name"],
+            avatar_url=persona["avatar"],
+            files=files
+        )
+    except discord.Forbidden:
+        await ctx.send(content or "", embed=embed, file=file)
+    except Exception as e:
+        await ctx.send("⚠️ Something went wrong.")
+        import logging; logging.error(f"[send_as_pet] Exception: {e}")
+
+# —————————————————————————————————————————————————————————————————————————————
+async def is_audio_attachment(attachment: discord.Attachment) -> bool:
+    return bool(attachment.content_type and "audio" in attachment.content_type)
+
+async def download_audio(attachment: discord.Attachment, save_path: str):
+    async with aiohttp.ClientSession() as session:
+        async with session.get(attachment.url) as resp:
+            if resp.status == 200:
+                with open(save_path, "wb") as f:
+                    f.write(await resp.read())
+            else:
+                raise RuntimeError(f"Failed to download {attachment.url}: HTTP {resp.status}")
+
+# —————————————————————————————————————————————————————————————————————————————
+async def transcribe_audio_async(path: str) -> str:
+    """
+    Runs Whisper transcription off the event loop.
+    """
+    model = await get_transcriber()
+    result = await asyncio.to_thread(model.transcribe, path)
+    return result.get("text", "")
+
+# —————————————————————————————————————————————————————————————————————————————
+async def send_long_message(ctx: discord.abc.Messageable, pet_type: str, text: str):
+    """
+    Splits and sends text in ≤2000-char chunks.
+    """
+    max_len = 2000
+    for i in range(0, len(text), max_len):
+        await send_as_pet(ctx, pet_type, content=text[i : i + max_len])
+
+# —————————————————————————————————————————————————————————————————————————————
+async def handle_voice_message(message: discord.Message, attachment: discord.Attachment):
+    filename = f"temp_{attachment.filename}"
+    await download_audio(attachment, filename)
+
+    # perform transcription (non-blocking)
+    transcript = await transcribe_audio_async(filename)
+
+    # add a header and send as owl persona
+    full_text = "**📜 Transcription:**\n> " + transcript
+    await send_long_message(message.channel, "owl", full_text)
+
+    # clean up
+    try:
+        os.remove(filename)
+    except OSError:
+        pass
+
+# —————————————————————————————————————————————————————————————————————————————
+def is_in_voice_chat_scope(message: discord.Message) -> bool:
+    """
+    Returns True if the message is in VOICE_CHAT_CHANNEL_ID or in a thread under it.
+    """
+    if not VOICE_CHAT_CHANNEL_ID:
+        return False
+    ch = message.channel
+    if getattr(ch, "id", None) == VOICE_CHAT_CHANNEL_ID:
+        return True
+    if isinstance(ch, discord.Thread) and ch.parent_id == VOICE_CHAT_CHANNEL_ID:
+        return True
+    return False
+
+# —————————————————————————————————————————————————————————————————————————————
+async def process_transcription(message: discord.Message):
+    """
+    Scan a message for audio attachments and fire off transcription.
+    """
+    if message.author.bot or not message.attachments:
+        return
+
+    # Skip transcription if the message is in the voice chat channel or its threads
+    if is_in_voice_chat_scope(message):
+        return
+
+    for attachment in message.attachments:
+        if await is_audio_attachment(attachment):
+            await handle_voice_message(message, attachment)
+
+
+/home/data/akhalegh/utils/owl/handle_gpt_mentions.py
+================================================================================
+# File: bot_events/handle_gpt_mentions.py
+
+import discord
+import logging
+import re
+from datetime import datetime, time
+from zoneinfo import ZoneInfo
+from openai import AsyncOpenAI, OpenAIError
+
+from bot_configs.config_general import OPENAI_API_KEY
+from bot_configs.config_roles import OWL_ROLE_ID
+from bot_configs.config_channels import (
+    JUDGE_ZONE_CHANNEL_ID,
+    VOICE_CHAT_CHANNEL_ID,
+    LINGO_CHAT_CHANNNEL_ID,
+)
+from pets.helper import send_as_pet
+from bot_events.handle_owl_translation import clean_mentions, build_conversation_history
+
+client = AsyncOpenAI(api_key=OPENAI_API_KEY)
+OWL_WEBHOOK_NAME = "Owl 🦉"
+TOKEN_LIMIT = 200
+
+EXCLUDED_CHANNELS = {
+    JUDGE_ZONE_CHANNEL_ID,
+    VOICE_CHAT_CHANNEL_ID,
+    LINGO_CHAT_CHANNNEL_ID,
+}
+
+
+def is_owl_muted_now() -> bool:
+    now = datetime.now(ZoneInfo("America/New_York")).time()
+    blocked_ranges = [
+        (time(10, 0), time(10, 1)),
+        (time(10, 30), time(10, 31)),
+        (time(11, 0), time(11, 1)),
+        (time(11, 30), time(11, 31)),
+    ]
+    return any(start <= now <= end for start, end in blocked_ranges)
+
+
+# ---------------- Main Handler ----------------
+async def handle_owl_mention(message: discord.Message, bot_user: discord.User):
+    if message.channel.id in EXCLUDED_CHANNELS:
+        return
+
+    cleaned = clean_mentions(message.content)
+
+    mentioned_owl = any(role.id == OWL_ROLE_ID for role in message.role_mentions)
+    replying_to_owl = False
+    context_message = None
+
+    if message.reference:
+        try:
+            ref_msg = await message.channel.fetch_message(message.reference.message_id)
+            if ref_msg.webhook_id and ref_msg.author.name == OWL_WEBHOOK_NAME:
+                replying_to_owl = True
+            else:
+                context_message = ref_msg
+        except Exception as e:
+            logging.warning(f"[Owl] Could not fetch replied message: {e}")
+
+    use_memory_mode = "-" in message.content.split("@Owl", 1)[-1]
+    if not (mentioned_owl or replying_to_owl):
+        return
+
+    if is_owl_muted_now():
+        await send_as_pet(message, pet_type="owl", content="I'm catching some Z's 💥, will be back soon after the quiz!")
+        return
+
+    try:
+        logging.info(f"[Owl] Generating response for message: {repr(cleaned)}")
+
+        history = await build_conversation_history(
+            message,
+            bot_user,
+            limit=100 if use_memory_mode else 10
+        )
+
+        # Include name-based reference if in memory mode
+        if use_memory_mode:
+            if not context_message:
+                match = re.search(r"\bwhat\s+(\w+)\s+said\b", cleaned, re.IGNORECASE)
+                if match:
+                    ref_name = match.group(1).lower()
+                    async for msg in message.channel.history(limit=50, before=message.created_at):
+                        if (
+                            msg.author.id != message.author.id
+                            and not msg.author.bot
+                            and msg.content
+                            and msg.author.display_name.lower().startswith(ref_name)
+                        ):
+                            context_message = msg
+                            break
+
+            if context_message:
+                history.append({
+                    "role": "user",
+                    "content": f"Please explain wittily what {context_message.author.display_name} meant by:\n\"{context_message.content.strip()}\""
+                })
+
+        history.append({"role": "user", "content": cleaned})
+
+        system_prompt = (
+            "You are Owl 🦉, a witty but thoughtful assistant in the Infinity Café Discord server. "
+            "You're fun but remember past messages when needed. "
+            "If someone refers to 'what [Name] said', recall their earlier messages to infer meaning. "
+            f"Stay within {TOKEN_LIMIT} tokens. Be helpful, friendly, and sharp."
+        ) if use_memory_mode else (
+            "You are Owl 🦉, a smart assistant in the Infinity Café Discord server. "
+            "Keep it short, lighthearted, and clever. "
+            f"Always respond consisely and less than {TOKEN_LIMIT} tokens."
+        )
+
+        # Prepare full prompt payload and log it
+        messages_payload = [
+            {"role": "system", "content": system_prompt},
+            *history
+        ]
+        logging.info(f"[Owl] Final prompt payload: {repr(messages_payload)}")
+
+        response = await client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=messages_payload,
+            max_tokens=TOKEN_LIMIT,
+        )
+
+        reply = response.choices[0].message.content.strip()
+        await send_as_pet(message, pet_type="owl", content=reply)
+
+    except OpenAIError as e:
+        logging.error(f"[Owl] OpenAI Error: {e}")
+        await message.channel.send("🦉 ran into a problem with its brain. Try again later.")
+    except Exception as e:
+        logging.error(f"[Owl] Unexpected Error: {e}")
+        await message.channel.send("🦉 is currently unavailable. Try again later.")
+
+
+/home/data/akhalegh/utils/owl/main.py
+================================================================================
+import discord
+from discord.ext import commands
+import aiohttp
+import asyncio
+
+# Helper functions to build embeds.
+def build_full_definition_embed(data, word):
+    embed = discord.Embed(title=f"🔍 Definition of **{word}**", color=discord.Color.blue())
+    entry = data[0]
+
+    # Add a field for phonetics.
+    phonetics = entry.get("phonetics", [])
+    phonetics_text = "\n".join([p.get("text", "") for p in phonetics if p.get("text")])
+    if phonetics_text:
+        embed.add_field(name="Phonetics", value=phonetics_text[:1024], inline=False)
+
+    # Add fields for each meaning.
+    meanings = entry.get("meanings", [])
+    for meaning in meanings:
+        part_of_speech = meaning.get("partOfSpeech", "N/A")
+        definitions = meaning.get("definitions", [])
+        defs_text = ""
+        for idx, definition in enumerate(definitions, start=1):
+            def_text = definition.get("definition", "")
+            example = definition.get("example", "")
+            defs_text += f"**{idx}.** {def_text}\n"
+            if example:
+                defs_text += f"*Example:* {example}\n"
+            if len(defs_text) > 900:  # buffer to prevent going over 1024
+                defs_text += "…"
+                break
+        embed.add_field(name=f"Meaning ({part_of_speech})", value=defs_text[:1024], inline=False)
+
+    # Add source URLs.
+    source_urls = entry.get("sourceUrls", [])
+    if source_urls:
+        embed.add_field(name="Source URL", value=", ".join(source_urls)[:1024], inline=False)
+
+    return embed
+
+def build_simple_definition_embed(data, word):
+    try:
+        definition = data[0]["meanings"][0]["definitions"][0]["definition"]
+    except (KeyError, IndexError):
+        definition = "Definition not available."
+    embed = discord.Embed(title=f"🔍 Definition of **{word}**", description=definition, color=discord.Color.blue())
+    return embed
+
+# Main lookup function.
+async def owl_lookup_definition(word, full=False):
+    url = f"https://api.dictionaryapi.dev/api/v2/entries/en/{word}"
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            if response.status != 200:
+                return False, "🙅 Word definition not found."
+            data = await response.json()
+    
+    embed = build_full_definition_embed(data, word) if full else build_simple_definition_embed(data, word)
+    return True, embed
+
+
+/home/data/akhalegh/utils/owl/handle_owl_translation.py
+================================================================================
+# File: bot_events/handle_owl_translation.py
+
+import discord
+import logging
+import re
+import fasttext
+from datetime import datetime, time
+from zoneinfo import ZoneInfo
+from openai import AsyncOpenAI
+from bot_configs.config_general import OPENAI_API_KEY
+from bot_configs.config_channels import LINGO_CHAT_CHANNNEL_ID
+from pets.helper import send_as_pet
+
+client = AsyncOpenAI(api_key=OPENAI_API_KEY)
+FASTTEXT_MODEL = fasttext.load_model("models/lid.176.bin")
+FETCH_LIMIT = 100
+
+# ---------------- Helpers ----------------
+
+def clean_mentions(text: str) -> str:
+    text = re.sub(r"<@!?[0-9]+>", "", text)
+    text = text.replace("\r", "").replace("\u200b", "")
+    return text.strip()
+
+def detect_language_fasttext(text: str) -> tuple[str, float]:
+    cleaned = clean_mentions(text).replace("\n", " ").strip()
+    if re.fullmatch(r"[a-zA-Z0-9\s'.,!?-]+", cleaned) and " da " in f" {cleaned} ":
+        return "en", 0.95
+    prediction = FASTTEXT_MODEL.predict(cleaned, k=1)
+    lang_code = prediction[0][0].replace("__label__", "")
+    confidence = prediction[1][0]
+    logging.info(f"[Owl] fastText detected: {lang_code} with confidence {confidence:.2f} for: {cleaned}")
+    return lang_code, confidence
+
+def get_flag(lang_code: str) -> str:
+    flags = {
+        "en": "🇺🇸", "fr": "🇫🇷", "es": "🇪🇸", "de": "🇩🇪", "it": "🇮🇹", "pt": "🇵🇹",
+        "ar": "🇸🇦", "fa": "🇸🇮", "zh": "🇨🇳", "ru": "🇷🇺", "ko": "🇰🇷",
+        "ja": "🇯🇵", "tr": "🇹🇷", "hi": "🇮🇳"
+    }
+    return flags.get(lang_code.lower(), "🌐")
+
+async def translate_to_english(text: str) -> str:
+    prompt = f"Translate the following to natural English. Only return the translation:\n\n\"{text.strip()}\""
+    response = await client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=100,
+    )
+    return response.choices[0].message.content.strip()
+
+async def build_conversation_history(
+    message: discord.Message,
+    bot_user: discord.User,
+    limit: int = FETCH_LIMIT
+):
+    logging.info("[Owl] Building full context history with usernames...")
+    relevant = []
+
+    async for msg in message.channel.history(limit=limit, before=message.created_at):
+        # skip the trigger message itself
+        if msg.id == message.id:
+            continue
+
+        content = msg.content.strip()
+        if not content:
+            continue
+
+        # determine role:
+        # - assistant if from our bot or any webhook
+        # - user otherwise
+        if msg.author.id == bot_user.id or msg.webhook_id:
+            role = "assistant"
+        else:
+            role = "user"
+
+        name = msg.author.display_name
+        relevant.append({
+            "role": role,
+            "content": f"{name}: {content}"
+        })
+
+    relevant.reverse()
+    return relevant
+
+# ---------------- Main Translator ----------------
+async def handle_owl_translation(message: discord.Message):
+    if message.channel.id != LINGO_CHAT_CHANNNEL_ID:
+        return
+
+    cleaned = clean_mentions(message.content)
+    lang, confidence = detect_language_fasttext(cleaned)
+    has_nonlatin = bool(re.search(r"[^\u0000-\u007F]", cleaned))
+    word_count = len(re.findall(r"\w+", cleaned))
+
+    if (
+        has_nonlatin or
+        (word_count >= 1 and not re.fullmatch(r"(?:<a?:\w+:\d+>|\W|\s)+", cleaned) and len(cleaned) >= 4)
+    ):
+        logging.info(f"[Owl] [Lingo Chat] Detected {lang} with {confidence:.2f}, translating...")
+
+        try:
+            translated = await translate_to_english(cleaned)
+        except Exception as e:
+            logging.error(f"[Owl] Translation failed in lingo-chat: {e}")
+            return
+
+        flag_src = get_flag(lang) if confidence >= 0.7 else "🌐"
+        flag_dst = get_flag("en")
+        await send_as_pet(message, pet_type="owl", content=f"{flag_src} → {flag_dst}: `{translated}`")
+
+
