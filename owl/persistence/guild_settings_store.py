@@ -1,13 +1,13 @@
 from typing import Optional
-import aiosqlite
 
 from .db import get_db
 from owl.models.guild_settings import GuildSettings
 
 async def get_settings(guild_id: int) -> GuildSettings:
-    async with await get_db() as db:
+    async with get_db() as db:  # ❌ async with await get_db()  -> ✅ async with get_db()
         async with db.execute(
-            "SELECT guild_id, translation_channel_id, voice_channel_id, judge_channel_id FROM guild_settings WHERE guild_id = ?",
+            "SELECT guild_id, translation_channel_id, voice_channel_id, judge_channel_id "
+            "FROM guild_settings WHERE guild_id = ?",
             (guild_id,),
         ) as cur:
             row = await cur.fetchone()
@@ -34,7 +34,7 @@ async def upsert_settings(
     if judge_channel_id is not None:
         existing.judge_channel_id = judge_channel_id
 
-    async with await get_db() as db:
+    async with get_db() as db:  # ❌ async with await get_db() -> ✅ async with get_db()
         await db.execute(
             """
             INSERT INTO guild_settings (guild_id, translation_channel_id, voice_channel_id, judge_channel_id)

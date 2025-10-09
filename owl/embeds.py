@@ -6,11 +6,15 @@ OWL_COLOR_SUCCESS = discord.Color.teal()
 OWL_COLOR_WARN = discord.Color.gold()
 OWL_COLOR_ERROR = discord.Color.red()
 
-def base_embed(title: str = None, desc: str = None, color=OWL_COLOR_INFO) -> discord.Embed:
-    e = discord.Embed(title=title or discord.Embed.Empty, description=desc or discord.Embed.Empty, color=color)
+def base_embed(title: str | None = None, desc: str | None = None, color=OWL_COLOR_INFO) -> discord.Embed:
+    e = discord.Embed(color=color)
+    if title:
+        e.title = title
+    if desc:
+        e.description = desc
     return e
 
-def info_embed(title: str, desc: str = None) -> discord.Embed:
+def info_embed(title: str, desc: str | None = None) -> discord.Embed:
     return base_embed(title, desc, OWL_COLOR_INFO)
 
 def success_embed(title: str, fields: Optional[Iterable[Tuple[str, str, bool]]] = None) -> discord.Embed:
@@ -20,9 +24,8 @@ def success_embed(title: str, fields: Optional[Iterable[Tuple[str, str, bool]]] 
             e.add_field(name=name, value=value, inline=inline)
     return e
 
-def error_embed(title: str, hint: str = None) -> discord.Embed:
-    desc = hint or "Please try again."
-    return base_embed(f"⚠️ {title}", desc, OWL_COLOR_ERROR)
+def error_embed(title: str, hint: str | None = None) -> discord.Embed:
+    return base_embed(f"⚠️ {title}", hint or "Please try again.", OWL_COLOR_ERROR)
 
 def result_embed(title: str, body: str, footer: Optional[str] = None) -> discord.Embed:
     e = base_embed(title, body, OWL_COLOR_INFO)

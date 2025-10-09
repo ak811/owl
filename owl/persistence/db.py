@@ -3,11 +3,12 @@ import logging
 
 _DB_PATH = "owl.sqlite3"
 
-async def get_db():
-    return await aiosqlite.connect(_DB_PATH)
+def get_db():
+    # Return the connection context manager (unawaited)
+    return aiosqlite.connect(_DB_PATH)
 
 async def init_db():
-    async with aiosqlite.connect(_DB_PATH) as db:
+    async with get_db() as db:
         await db.execute(
             """
             CREATE TABLE IF NOT EXISTS guild_settings (
