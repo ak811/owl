@@ -56,9 +56,8 @@ coverage.xml
 !.env.example
 
 # -------------------------
-# Models & data
+# Data
 # -------------------------
-models/
 *.bin
 *.mp3
 *.wav

@@ -23,6 +23,7 @@ async def main():
         "owl.cogs.voice_watcher",
         "owl.cogs.rating_watcher",
         "owl.cogs.gpt_mentions",
+        "owl.cogs.dictionary_watcher",
     ]:
         try:
             await bot.load_extension(ext)

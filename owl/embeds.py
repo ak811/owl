@@ -33,9 +33,10 @@ def result_embed(title: str, body: str, footer: Optional[str] = None) -> discord
         e.set_footer(text=footer)
     return e
 
-def settings_embed(guild_name: str, translation_ch: str, voice_ch: str, judge_ch: str) -> discord.Embed:
+def settings_embed(guild_name: str, translation_ch: str, voice_ch: str, judge_ch: str, dictionary_ch: str) -> discord.Embed:
     e = base_embed(f"🛠️ Owl Settings — {guild_name}", color=OWL_COLOR_SUCCESS)
     e.add_field(name="Translation Channel", value=translation_ch or "—", inline=False)
-    e.add_field(name="Voice/Transcription Channel", value=voice_ch or "—", inline=False)
+    e.add_field(name="Transcription Channel", value=voice_ch or "—", inline=False)
     e.add_field(name="Judge Channel", value=judge_ch or "—", inline=False)
+    e.add_field(name="Dictionary Channel", value=dictionary_ch or "—", inline=False)
     return e

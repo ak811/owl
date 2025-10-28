@@ -22,6 +22,7 @@ class OwlCommands(commands.Cog):
             "`!owl set translation-channel [#channel|off]`\n"
             "`!owl set transcription-channel [#channel|off]`\n"
             "`!owl set judge-channel [#channel|off]`\n"
+            "`!owl set dictionary-channel [#channel|off]`\n"
             "`!owl settings` — Show current server settings"
         )
         await ctx.send(embed=e)
@@ -107,11 +108,24 @@ class OwlCommands(commands.Cog):
             embed=success_embed("✅ Judge channel set.", fields=[("Channel", channel.mention, True)])
         )
 
+    @owl_set.command(name="dictionary-channel")
+    @commands.has_permissions(manage_guild=True)
+    async def set_dictionary(self, ctx: commands.Context, channel: discord.TextChannel | str):
+        guild_id = ctx.guild.id
+        if isinstance(channel, str) and channel.lower() == "off":
+            await clear_channel(guild_id, "dictionary")
+            await ctx.send(embed=success_embed("Dictionary channel cleared."))
+            return
+        await upsert_settings(guild_id, dictionary_channel_id=channel.id)
+        await ctx.send(
+            embed=success_embed("✅ Dictionary channel set.", fields=[("Channel", channel.mention, True)])
+        )
+
     @owl_group.command(name="settings")
     async def show_settings(self, ctx: commands.Context):
         s = await get_settings(ctx.guild.id)
 
-        def fmt(cid): 
+        def fmt(cid):
             return ctx.guild.get_channel(cid).mention if cid and ctx.guild.get_channel(cid) else "—"
 
         e = settings_embed(
@@ -119,6 +133,7 @@ class OwlCommands(commands.Cog):
             fmt(s.translation_channel_id),
             fmt(s.voice_channel_id),
             fmt(s.judge_channel_id),
+            fmt(s.dictionary_channel_id),
         )
         await ctx.send(embed=e)
 

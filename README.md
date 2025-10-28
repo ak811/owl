@@ -9,9 +9,11 @@ Prefix-command bot with embeds-only responses.
 - `!owl set translation-channel [#channel|off]`
 - `!owl set transcription-channel [#channel|off]` _(alias: `voice-channel`)_
 - `!owl set judge-channel [#channel|off]`
+- `!owl set dictionary-channel [#channel|off]`
 - `!owl settings` — Show guild settings
 - Auto-translate in translation channel
 - Auto-transcribe audio/video in transcription channel
+- **Auto-dictionary in dictionary channel:** send a word/phrase and Owl replies with short meanings, synonyms, antonyms, and one example per meaning.
 - Rating + emoji reactions in judge channel
 - Mention `@Owl` for quick replies; add `-` for memory mode
 
