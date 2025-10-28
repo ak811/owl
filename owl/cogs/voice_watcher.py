@@ -7,8 +7,21 @@ from owl.persistence.guild_settings_store import get_settings
 from owl.services.transcription import download_file, transcribe_file, cleanup
 
 
-def is_audio(attachment: discord.Attachment) -> bool:
-    return bool(attachment.content_type and "audio" in attachment.content_type)
+def is_audio_like(attachment: discord.Attachment) -> bool:
+    """
+    Consider an attachment transcribable if:
+      - Discord marks it as audio/* OR video/*, OR
+      - its filename matches a common audio/video extension.
+    """
+    ct = (attachment.content_type or "").lower()
+    if "audio" in ct or "video" in ct:
+        return True
+    name = (attachment.filename or "").lower()
+    exts = (
+        ".mp3", ".wav", ".m4a", ".aac", ".ogg", ".oga", ".opus", ".flac", ".wma",
+        ".webm", ".mp4", ".m4v", ".mov", ".mkv"
+    )
+    return any(name.endswith(ext) for ext in exts)
 
 
 class VoiceWatcher(commands.Cog):
@@ -26,7 +39,7 @@ class VoiceWatcher(commands.Cog):
             return
 
         for att in message.attachments:
-            if is_audio(att):
+            if is_audio_like(att):
                 temp = f"tmp_{att.filename}"
                 try:
                     await download_file(att.url, temp)
@@ -34,7 +47,7 @@ class VoiceWatcher(commands.Cog):
                     if not text.strip():
                         await message.channel.send(embed=error_embed("Transcription failed or empty."))
                         continue
-                    chunks = [text[i:i+1800] for i in range(0, len(text), 1800)]
+                    chunks = [text[i:i + 1800] for i in range(0, len(text), 1800)]
                     for idx, chunk in enumerate(chunks, 1):
                         title = "📜 Transcription" if len(chunks) == 1 else f"📜 Transcription ({idx}/{len(chunks)})"
                         await message.channel.send(embed=result_embed(title, f"> {chunk}"))

@@ -13,13 +13,14 @@ class OwlCommands(commands.Cog):
 
     @commands.group(name="owl", invoke_without_command=True)
     async def owl_group(self, ctx: commands.Context):
-        e = info_embed("🦉 Owl Commands",
+        e = info_embed(
+            "🦉 Owl Commands",
             "`!owl` — Show this help\n"
             "`!owl def [word]` — Quick definition\n"
             "`!owl deff [word]` — Full definition\n"
             "`!owl p [accent] [words]` — Pronounce\n"
             "`!owl set translation-channel [#channel|off]`\n"
-            "`!owl set voice-channel [#channel|off]`\n"
+            "`!owl set transcription-channel [#channel|off]`\n"
             "`!owl set judge-channel [#channel|off]`\n"
             "`!owl settings` — Show current server settings"
         )
@@ -45,10 +46,13 @@ class OwlCommands(commands.Cog):
             accent = "us"
         try:
             path = build_tts(words, accent)
-            e = success_embed("🔊 Pronunciation", fields=[
-                ("Word", words, True),
-                ("Accent", accent, True),
-            ])
+            e = success_embed(
+                "🔊 Pronunciation",
+                fields=[
+                    ("Word", words, True),
+                    ("Accent", accent, True),
+                ],
+            )
             await ctx.send(embed=e, file=discord.File(path, filename=path))
         except Exception:
             await ctx.send(embed=error_embed("Couldn't generate pronunciation."))
@@ -67,22 +71,28 @@ class OwlCommands(commands.Cog):
     async def set_translation(self, ctx: commands.Context, channel: discord.TextChannel | str):
         guild_id = ctx.guild.id
         if isinstance(channel, str) and channel.lower() == "off":
-            s = await clear_channel(guild_id, "translation")
+            await clear_channel(guild_id, "translation")
             await ctx.send(embed=success_embed("Translation channel cleared."))
             return
-        s = await upsert_settings(guild_id, translation_channel_id=channel.id)
-        await ctx.send(embed=success_embed("✅ Translation channel set.", fields=[("Channel", channel.mention, True)]))
+        await upsert_settings(guild_id, translation_channel_id=channel.id)
+        await ctx.send(
+            embed=success_embed("✅ Translation channel set.", fields=[("Channel", channel.mention, True)])
+        )
 
-    @owl_set.command(name="voice-channel")
+    # Primary command name is "transcription-channel".
+    # Keep "voice-channel" as an alias for backward compatibility.
+    @owl_set.command(name="transcription-channel", aliases=["voice-channel"])
     @commands.has_permissions(manage_guild=True)
-    async def set_voice(self, ctx: commands.Context, channel: discord.TextChannel | str):
+    async def set_transcription(self, ctx: commands.Context, channel: discord.TextChannel | str):
         guild_id = ctx.guild.id
         if isinstance(channel, str) and channel.lower() == "off":
             await clear_channel(guild_id, "voice")
-            await ctx.send(embed=success_embed("Voice/transcription channel cleared."))
+            await ctx.send(embed=success_embed("Transcription channel cleared."))
             return
-        s = await upsert_settings(guild_id, voice_channel_id=channel.id)
-        await ctx.send(embed=success_embed("✅ Voice/transcription channel set.", fields=[("Channel", channel.mention, True)]))
+        await upsert_settings(guild_id, voice_channel_id=channel.id)
+        await ctx.send(
+            embed=success_embed("✅ Transcription channel set.", fields=[("Channel", channel.mention, True)])
+        )
 
     @owl_set.command(name="judge-channel")
     @commands.has_permissions(manage_guild=True)
@@ -92,18 +102,23 @@ class OwlCommands(commands.Cog):
             await clear_channel(guild_id, "judge")
             await ctx.send(embed=success_embed("Judge channel cleared."))
             return
-        s = await upsert_settings(guild_id, judge_channel_id=channel.id)
-        await ctx.send(embed=success_embed("✅ Judge channel set.", fields=[("Channel", channel.mention, True)]))
+        await upsert_settings(guild_id, judge_channel_id=channel.id)
+        await ctx.send(
+            embed=success_embed("✅ Judge channel set.", fields=[("Channel", channel.mention, True)])
+        )
 
     @owl_group.command(name="settings")
     async def show_settings(self, ctx: commands.Context):
         s = await get_settings(ctx.guild.id)
-        def fmt(cid): return ctx.guild.get_channel(cid).mention if cid and ctx.guild.get_channel(cid) else "—"
+
+        def fmt(cid): 
+            return ctx.guild.get_channel(cid).mention if cid and ctx.guild.get_channel(cid) else "—"
+
         e = settings_embed(
             ctx.guild.name,
             fmt(s.translation_channel_id),
             fmt(s.voice_channel_id),
-            fmt(s.judge_channel_id)
+            fmt(s.judge_channel_id),
         )
         await ctx.send(embed=e)
 
