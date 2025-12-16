@@ -70,7 +70,6 @@ coverage.xml
 *.tar
 *.tar.gz
 *.csv
-*.sqlite3
 *.db
 
 # -------------------------
