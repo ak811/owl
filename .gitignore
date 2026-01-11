@@ -98,3 +98,5 @@ logs/
 tmp/
 temp/
 __temp__/
+aggregate_code_with_file_tree.py
+aggregated_code.txt
