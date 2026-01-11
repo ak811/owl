@@ -1,7 +1,7 @@
 import aiosqlite
 import logging
 
-_DB_PATH = "owl.sqlite3"
+_DB_PATH = "data/owl.sqlite3"
 
 def get_db():
     # Return the connection context manager (unawaited)
