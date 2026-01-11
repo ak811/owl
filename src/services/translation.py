@@ -6,8 +6,8 @@ from typing import Tuple
 
 import fasttext
 
-from owl.config import FASTTEXT_MODEL_PATH
-from owl.services.gpt_utils import get_client
+from src.config import FASTTEXT_MODEL_PATH
+from src.services.gpt_utils import get_client
 
 _FASTTEXT = None
 _FT_URL = "https://dl.fbaipublicfiles.com/fasttext/supervised-models/lid.176.bin"

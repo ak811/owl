@@ -1,9 +1,9 @@
 import discord
 from discord.ext import commands
 
-from owl.embeds import result_embed
-from owl.persistence.guild_settings_store import get_settings
-from owl.services.translation import detect_language, translate_to_english, get_flag, clean_mentions
+from src.embeds import result_embed
+from src.persistence.guild_settings_store import get_settings
+from src.services.translation import detect_language, translate_to_english, get_flag, clean_mentions
 
 
 class TranslationWatcher(commands.Cog):

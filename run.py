@@ -5,9 +5,9 @@ import sys
 import discord
 from discord.ext import commands
 
-from owl.config import BOT_PREFIX, load_env, OWL_INTENTS
-from owl.logging_config import setup_logging
-from owl.persistence.db import init_db
+from src.config import BOT_PREFIX, load_env, OWL_INTENTS
+from src.logging_config import setup_logging
+from src.persistence.db import init_db
 
 
 async def main():
@@ -36,7 +36,7 @@ async def main():
         logging.getLogger("owl").info(f"Logged in as {bot.user} (ID: {bot.user.id})")
         await init_db()
 
-    from owl.config import DISCORD_TOKEN
+    from src.config import DISCORD_TOKEN
     await bot.start(DISCORD_TOKEN)
 
 

@@ -2,9 +2,9 @@ import os
 import discord
 from discord.ext import commands
 
-from owl.embeds import result_embed, error_embed
-from owl.persistence.guild_settings_store import get_settings
-from owl.services.transcription import download_file, transcribe_file, cleanup
+from src.embeds import result_embed, error_embed
+from src.persistence.guild_settings_store import get_settings
+from src.services.transcription import download_file, transcribe_file, cleanup
 
 
 def is_audio_like(attachment: discord.Attachment) -> bool:

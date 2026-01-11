@@ -1,9 +1,9 @@
 import discord
 from discord.ext import commands
 
-from owl.persistence.guild_settings_store import get_settings
-from owl.services.definitions import fetch_glossary
-from owl.services.translation import clean_mentions  # reuse mention cleaning
+from src.persistence.guild_settings_store import get_settings
+from src.services.definitions import fetch_glossary
+from src.services.translation import clean_mentions  # reuse mention cleaning
 
 class DictionaryWatcher(commands.Cog):
     def __init__(self, bot: commands.Bot):

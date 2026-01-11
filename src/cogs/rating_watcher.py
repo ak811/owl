@@ -1,9 +1,9 @@
 import discord
 from discord.ext import commands
 
-from owl.embeds import result_embed
-from owl.persistence.guild_settings_store import get_settings
-from owl.services.rating import rate_message_and_emojis, digit_to_emoji
+from src.embeds import result_embed
+from src.persistence.guild_settings_store import get_settings
+from src.services.rating import rate_message_and_emojis, digit_to_emoji
 
 
 class RatingWatcher(commands.Cog):

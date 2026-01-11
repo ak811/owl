@@ -5,7 +5,7 @@ from typing import Optional
 import aiohttp
 import whisper
 
-from owl.config import WHISPER_DEVICE
+from src.config import WHISPER_DEVICE
 
 _TRANSCRIBER: Optional[whisper.Whisper] = None
 

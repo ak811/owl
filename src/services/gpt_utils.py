@@ -1,5 +1,5 @@
 from openai import AsyncOpenAI
-from owl.config import OPENAI_API_KEY
+from src.config import OPENAI_API_KEY
 
 _client: AsyncOpenAI | None = None
 

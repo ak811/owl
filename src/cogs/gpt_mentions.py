@@ -2,9 +2,9 @@ import re
 import discord
 from discord.ext import commands
 
-from owl.embeds import result_embed
-from owl.persistence.guild_settings_store import get_settings
-from owl.services.gpt_utils import get_client
+from src.embeds import result_embed
+from src.persistence.guild_settings_store import get_settings
+from src.services.gpt_utils import get_client
 
 TOKEN_LIMIT = 200
 OWL_NAME = "Owl 🦉"

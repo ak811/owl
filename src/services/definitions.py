@@ -3,8 +3,8 @@ import json
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
-from owl.embeds import base_embed, result_embed, error_embed
-from owl.services.gpt_utils import get_client
+from src.embeds import base_embed, result_embed, error_embed
+from src.services.gpt_utils import get_client
 
 # ---------------- LLM prompts ----------------
 

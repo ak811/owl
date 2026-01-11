@@ -1,10 +1,10 @@
 import discord
 from discord.ext import commands
 
-from owl.embeds import info_embed, success_embed, error_embed, settings_embed
-from owl.services.definitions import fetch_definition
-from owl.services.pronunciation import build_tts, cleanup_file, ACCENT_MAP
-from owl.persistence.guild_settings_store import get_settings, upsert_settings, clear_channel
+from src.embeds import info_embed, success_embed, error_embed, settings_embed
+from src.services.definitions import fetch_definition
+from src.services.pronunciation import build_tts, cleanup_file, ACCENT_MAP
+from src.persistence.guild_settings_store import get_settings, upsert_settings, clear_channel
 
 
 class OwlCommands(commands.Cog):

@@ -1,7 +1,7 @@
 from typing import Optional
 
 from .db import get_db
-from owl.models.guild_settings import GuildSettings
+from src.models.guild_settings import GuildSettings
 
 async def get_settings(guild_id: int) -> GuildSettings:
     async with get_db() as db:

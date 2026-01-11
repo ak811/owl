@@ -1,7 +1,7 @@
 import re
 from typing import List, Tuple
 
-from owl.services.gpt_utils import get_client
+from src.services.gpt_utils import get_client
 
 NUM_EMOJIS = {
     "0": "0️⃣", "1": "1️⃣", "2": "2️⃣", "3": "3️⃣",
